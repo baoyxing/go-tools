@@ -28,7 +28,7 @@ type MediaSegment struct {
 	End             uint64
 }
 
-func ParseM3u8Ts(ctx context.Context, url string) (*MediaPlaylist, error) {
+func ParseM3u8(ctx context.Context, url string) (*MediaPlaylist, error) {
 	body, err := fasthttp.Get(url)
 	if err != nil {
 		return nil, err
