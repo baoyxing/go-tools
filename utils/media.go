@@ -77,7 +77,53 @@ func ParseM3u8(ctx context.Context, url string) (*MediaPlaylist, error) {
 			return nil, err
 		}
 		url = ResolveURL(_url, masterpl.Variants[0].URI)
-		return ParseM3u8Ts(ctx, url)
+		return ParseM3u8(ctx, url)
 	}
 	return nil, nil
+}
+
+func ParseM3u8Ts(ctx context.Context, url string) (tsUrls []string, duration float64, tsDuration []float64, err error) {
+	customTags := []m3u8.CustomDecoder{
+		&template.CustomPlaylistTag{},
+		&template.CustomSegmentTag{},
+	}
+	body, err := fasthttp.Get(url)
+	p, listType, err := m3u8.DecodeWith(*bytes.NewBuffer(body), false, customTags)
+	if err != nil {
+		return nil, 0, nil, err
+	}
+	if tsUrls == nil {
+		tsUrls = make([]string, 0)
+	}
+	if tsDuration == nil {
+		tsDuration = make([]float64, 0)
+	}
+	switch listType {
+	case m3u8.MEDIA:
+		noSuffixUrl := GetNoFileUrl(url)
+		_url, err := nUrl.Parse(noSuffixUrl)
+		if err != nil {
+			return nil, 0, nil, err
+		}
+		mediapl := p.(*m3u8.MediaPlaylist)
+		for _, segment := range mediapl.Segments {
+			if segment != nil {
+				segmentUrl := ResolveURL(_url, segment.URI)
+				duration += segment.Duration
+				tsUrls = append(tsUrls, segmentUrl)
+				tsDuration = append(tsDuration, segment.Duration)
+			}
+		}
+	case m3u8.MASTER:
+		noSuffixUrl := GetNoSuffixUrl(url)
+		masterpl := p.(*m3u8.MasterPlaylist)
+		_url, err := nUrl.Parse(noSuffixUrl)
+		if err != nil {
+			return nil, 0, nil, err
+		}
+		url = ResolveURL(_url, masterpl.Variants[0].URI)
+		tsUrls, duration, tsDuration, err = ParseM3u8Ts(ctx, url)
+	}
+	return
+
 }
