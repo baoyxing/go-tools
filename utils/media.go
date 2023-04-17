@@ -10,6 +10,13 @@ import (
 	"time"
 )
 
+type MediaType uint
+
+const (
+	Live MediaType = iota + 1 //直播
+	Vod                       //点播
+)
+
 type MediaPlaylist struct {
 	TargetDuration float64
 	SeqNo          uint64 // EXT-X-MEDIA-SEQUENCE
@@ -26,6 +33,38 @@ type MediaSegment struct {
 	ProgramDateTime time.Time
 	Start           uint64
 	End             uint64
+}
+
+func CheckM3u8MediaType(url string) (MediaType, error) {
+	customTags := []m3u8.CustomDecoder{
+		&template.CustomPlaylistTag{},
+		&template.CustomSegmentTag{},
+	}
+	body, err := fasthttp.Get(url)
+	p, listType, err := m3u8.DecodeWith(body, false, customTags)
+
+	if err != nil {
+		return Vod, err
+	}
+	switch listType {
+	case m3u8.MEDIA:
+		mediapl := p.(*m3u8.MediaPlaylist)
+		if mediapl.Closed {
+			return Vod, nil
+		} else {
+			return Live, nil
+		}
+	case m3u8.MASTER:
+		noSuffixUrl := GetNoSuffixUrl(url)
+		masterpl := p.(*m3u8.MasterPlaylist)
+		_url, err := nUrl.Parse(noSuffixUrl)
+		if err != nil {
+			return Vod, err
+		}
+		url = ResolveURL(_url, masterpl.Variants[0].URI)
+		return CheckM3u8MediaType(url)
+	}
+	return Vod, err
 }
 
 func ParseM3u8(ctx context.Context, url string) (*MediaPlaylist, error) {
