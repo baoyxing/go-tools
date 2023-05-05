@@ -41,7 +41,7 @@ func CheckM3u8MediaType(url string) (MediaType, error) {
 		&template.CustomSegmentTag{},
 	}
 	body, err := fasthttp.Get(url)
-	p, listType, err := m3u8.DecodeWith(body, false, customTags)
+	p, listType, err := m3u8.DecodeWith(bytes.NewBuffer(body), false, customTags)
 
 	if err != nil {
 		return Vod, err
