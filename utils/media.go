@@ -33,6 +33,7 @@ type MediaSegment struct {
 	ProgramDateTime time.Time
 	Start           uint64
 	End             uint64
+	NetTsIsRest     bool `json:"-"`
 }
 
 func CheckM3u8MediaType(url string) (MediaType, error) {
