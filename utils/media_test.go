@@ -6,19 +6,6 @@ import (
 )
 
 func TestCheckM3u8MediaType(t *testing.T) {
-	//ctx := app.RequestContext{
-	//	Request:    protocol.Request{},
-	//	Response:   protocol.Response{},
-	//	Errors:     nil,
-	//	Params:     nil,
-	//	HTMLRender: nil,
-	//	Keys:       nil,
-	//}
-	//hlog.CtxDebugf(context.Background(), "ctx:%v", ctx.Keys)
-	//
-	//err := rpc.NewBizStatusError(rpc.ErrorTypeDBHandle, errors.New("测试"))
-	//fmt.Println("err:", err)
-
 	url := "http://120.196.232.57:8088/wh7f454c46tw1038680586_-1109007784/" +
 		"rrs03.hw.gmcc.net/PLTV/81/224/3221226737/index.m3u8?rrsip=rrs04.hw.g" +
 		"mcc.net%3A8088%2Crrsip%3Drrs01.hw.gmcc.net%3A8088%2Crrsip%3Drrs02.hw.g" +
@@ -44,10 +31,4 @@ func TestCheckM3u8MediaType(t *testing.T) {
 			fmt.Println("直播")
 		}
 	}
-	//url, err := fasthttp.GetRedirectUrlWithRetryTimes(url, 3)
-	//if err != nil {
-	//	fmt.Println("err:", err)
-	//} else {
-	//	fmt.Println("url:", url)
-	//}
 }
