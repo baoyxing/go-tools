@@ -1,0 +1,42 @@
+package v1
+
+import (
+	genericsCache "github.com/Code-Hex/go-generics-cache"
+	"github.com/Code-Hex/go-generics-cache/policy/lru"
+	v1 "github.com/baoyxing/go-tools/cache/v1"
+	"time"
+)
+
+type LruCache[K comparable, V any] struct {
+	cache *genericsCache.Cache[K, V]
+}
+
+func (c LruCache[K, V]) Get(key K) (value V, ok bool) {
+	return c.cache.Get(key)
+}
+
+func (c LruCache[K, V]) Set(key K, val V) {
+	c.cache.Set(key, val)
+}
+
+func (c LruCache[K, V]) SetWithExp(key K, val V, exp time.Duration) {
+	c.cache.Set(key, val, genericsCache.WithExpiration(exp))
+}
+
+func (c LruCache[K, V]) Delete(key K) {
+	c.cache.Delete(key)
+}
+
+func (c LruCache[K, V]) Keys() []K {
+	return c.cache.Keys()
+}
+func (c LruCache[K, V]) Contains(key K) bool {
+	return c.cache.Contains(key)
+}
+func NewLruCache[K comparable, V any](capacity int) v1.Cache[K, V] {
+	opts := genericsCache.AsLRU[K, V](lru.WithCapacity(capacity))
+	c := genericsCache.New[K, V](opts)
+	return &LruCache[K, V]{
+		c,
+	}
+}
