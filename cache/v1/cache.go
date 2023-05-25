@@ -9,4 +9,5 @@ type Cache[K comparable, V any] interface {
 	Keys() []K
 	Contains(key K) bool
 	Delete(key K)
+	Empty()
 }

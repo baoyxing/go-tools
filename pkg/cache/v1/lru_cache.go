@@ -33,6 +33,13 @@ func (c LruCache[K, V]) Keys() []K {
 func (c LruCache[K, V]) Contains(key K) bool {
 	return c.cache.Contains(key)
 }
+func (c LruCache[K, V]) Empty() {
+	keys := c.Keys()
+	for _, key := range keys {
+		c.Delete(key)
+	}
+}
+
 func NewLruCache[K comparable, V any](capacity int) v1.Cache[K, V] {
 	opts := genericsCache.AsLRU[K, V](lru.WithCapacity(capacity))
 	c := genericsCache.New[K, V](opts)
