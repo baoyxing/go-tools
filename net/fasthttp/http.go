@@ -76,6 +76,39 @@ func GetTsSize(httpUrL string) (*fasthttp.Response, error) {
 	return rsp, nil
 }
 
+func GetFileSizeWithRetryTimes(httpUrL string, retryTimes int) (uint64, error) {
+	rsp, err := RetryDoHTTPWithErr(func() (*fasthttp.Response, error) {
+		return GetFileSize(httpUrL)
+	}, retryTimes, 0)
+	if err != nil {
+		return 0, err
+	}
+	defer fasthttp.ReleaseResponse(rsp)
+	contentRange := string(rsp.Header.Peek("Content-Range"))
+	size := int64(0)
+	if contentRange != "" {
+		arr := strings.Split(contentRange, "/")
+		if len(arr) >= 2 {
+			size, _ = strconv.ParseInt(arr[1], 10, 64)
+		}
+	}
+	return uint64(size), nil
+}
+
+func GetFileSize(httpUrL string) (*fasthttp.Response, error) {
+	req := fasthttp.AcquireRequest()
+	defer fasthttp.ReleaseRequest(req)
+	req.Header.SetMethod(consts.MethodHead)
+	req.SetRequestURI(httpUrL)
+	req.Header.SetUserAgent("Mozilla/5.0 (Macintosh; " +
+		"Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36")
+	rsp := fasthttp.AcquireResponse()
+	if err := fasthttp.DoTimeout(req, rsp, 3*time.Second); err != nil {
+		return nil, err
+	}
+	return rsp, nil
+}
+
 func GetRedirectUrlWithRetryTimes(httpUrl string, retryTimes int) (string, error) {
 	rsp, err := RetryDoHTTPWithErr(func() (*fasthttp.Response, error) {
 		return get(httpUrl, 3*time.Second)
