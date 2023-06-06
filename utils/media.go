@@ -7,6 +7,7 @@ import (
 	"github.com/grafov/m3u8"
 	"github.com/grafov/m3u8/example/template"
 	nUrl "net/url"
+	"sort"
 	"time"
 )
 
@@ -20,7 +21,8 @@ const (
 type MediaPlaylist struct {
 	TargetDuration float64
 	SeqNo          uint64 // EXT-X-MEDIA-SEQUENCE
-	Segments       []*MediaSegment
+	SegmentMap     map[int64]*MediaSegment
+	SegmentList    []*MediaSegment
 	Ver            uint8
 	Count          uint
 	MediaLength    uint64
@@ -88,13 +90,11 @@ func ParseM3u8(ctx context.Context, url string) (*MediaPlaylist, error) {
 			return nil, err
 		}
 		mediapl := p.(*m3u8.MediaPlaylist)
-		count := mediapl.Count()
 		mediaPlaylist := &MediaPlaylist{
 			TargetDuration: mediapl.TargetDuration,
 			SeqNo:          mediapl.SeqNo,
-			Segments:       make([]*MediaSegment, 0, mediapl.Count()),
+			SegmentMap:     make(map[int64]*MediaSegment, 0),
 			Ver:            mediapl.Version(),
-			Count:          count,
 			MediaLength:    0,
 		}
 		for _, segment := range mediapl.Segments {
@@ -104,9 +104,17 @@ func ParseM3u8(ctx context.Context, url string) (*MediaPlaylist, error) {
 					Duration:        segment.Duration,
 					ProgramDateTime: segment.ProgramDateTime,
 				}
-				mediaPlaylist.Segments = append(mediaPlaylist.Segments, mediaSegment)
+				mediaPlaylist.SegmentMap[segment.ProgramDateTime.Unix()] = mediaSegment
 			}
 		}
+		mediaPlaylist.SegmentList = make([]*MediaSegment, 0, len(mediaPlaylist.SegmentMap))
+		for _, segment := range mediaPlaylist.SegmentMap {
+			mediaPlaylist.SegmentList = append(mediaPlaylist.SegmentList, segment)
+		}
+		sort.Slice(mediaPlaylist.SegmentList, func(i, j int) bool {
+			return mediaPlaylist.SegmentList[i].ProgramDateTime.Unix() < mediaPlaylist.SegmentList[j].ProgramDateTime.Unix()
+		})
+		mediaPlaylist.Count = uint(len(mediaPlaylist.SegmentList))
 		return mediaPlaylist, nil
 	case m3u8.MASTER:
 		noSuffixUrl := GetNoSuffixUrl(url)
