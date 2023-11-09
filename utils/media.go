@@ -3,7 +3,6 @@ package utils
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"github.com/baoyxing/go-tools/net/fasthttp"
 	"github.com/grafov/m3u8"
 	"github.com/grafov/m3u8/example/template"
@@ -52,7 +51,6 @@ func CheckM3u8MediaType(url string) (MediaType, error) {
 	switch listType {
 	case m3u8.MEDIA:
 		mediapl := p.(*m3u8.MediaPlaylist)
-		fmt.Println("mediapl version:", mediapl.Version())
 		if mediapl.Closed {
 			return Vod, nil
 		} else {
