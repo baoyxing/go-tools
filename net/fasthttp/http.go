@@ -1,8 +1,13 @@
 package fasthttp
 
 import (
+	"crypto/md5"
+	"fmt"
 	"github.com/baoyxing/go-tools/net/consts"
+	"github.com/pkg/errors"
 	"github.com/valyala/fasthttp"
+	"io"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -19,13 +24,50 @@ func Get(httpUrl string) ([]byte, error) {
 	return rsp.Body(), nil
 }
 
-func DownloadTsDataWithRetryTimes(httpUrl string, start, end, retryTimes int) ([]byte, error) {
+func DownloadTsDataWithRetryTimes(httpUrl string, start, end, retryTimes int, timeOut time.Duration) ([]byte, error) {
 	return RetryDoHTTPWithEmptyBody(func() ([]byte, error) {
-		return downloadTsData(httpUrl, start, end)
+		return downloadTsData(httpUrl, start, end, timeOut)
 	}, retryTimes, 0)
 }
 
-func downloadTsData(url string, start, end int) ([]byte, error) {
+func DownloadFullTsDataWithRetryTimes(httpUrl, key string, isCheckMD5 bool, retryTimes int, timeOut time.Duration) ([]byte, error) {
+	return RetryDoHTTPWithEmptyBody(func() ([]byte, error) {
+		return downFullTsData(httpUrl, key, isCheckMD5, timeOut)
+	}, retryTimes, 0)
+}
+
+// downFullTsData 下载全量TS
+func downFullTsData(url, key string, isCheckMD5 bool, timeOut time.Duration) ([]byte, error) {
+	req := fasthttp.AcquireRequest()
+	defer fasthttp.ReleaseRequest(req)
+	req.Header.SetMethod(consts.MethodGet)
+	req.SetRequestURI(url)
+	req.Header.SetUserAgent("Mozilla/5.0 (Macintosh; " +
+		"Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36")
+	rsp := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseResponse(rsp)
+	if err := fasthttp.DoTimeout(req, rsp, timeOut*time.Second); err != nil {
+		return nil, err
+	}
+	body := rsp.Body()
+	if isCheckMD5 {
+		md5Str, err := getM3u8Md5WithUrl(url, key)
+		if err != nil {
+			return nil, err
+		}
+		isOk, err := checkM3u8TsMD5(body, md5Str)
+		if err != nil {
+			return nil, err
+		}
+		if !isOk {
+			return nil, errors.New("下载ts数据不完整")
+		}
+	}
+	return body, nil
+}
+
+// range 方式下载TS
+func downloadTsData(url string, start, end int, timeOut time.Duration) ([]byte, error) {
 	req := fasthttp.AcquireRequest()
 	defer fasthttp.ReleaseRequest(req)
 	req.Header.SetMethod(consts.MethodGet)
@@ -36,7 +78,7 @@ func downloadTsData(url string, start, end int) ([]byte, error) {
 		"Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36")
 	rsp := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseResponse(rsp)
-	if err := fasthttp.DoTimeout(req, rsp, 30*time.Second); err != nil {
+	if err := fasthttp.DoTimeout(req, rsp, timeOut*time.Second); err != nil {
 		return nil, err
 	}
 	return rsp.Body(), nil
@@ -132,4 +174,31 @@ func get(httpUrl string, timeout time.Duration) (*fasthttp.Response, error) {
 		return nil, err
 	}
 	return rsp, nil
+}
+
+func getM3u8Md5WithUrl(urlPath string, key string) (string, error) {
+	u, err := url.Parse(urlPath)
+	if err != nil {
+		return "", err
+	}
+	md5Str := u.Query().Get(key)
+	if md5Str == "" {
+		return "", errors.New("未带校验值")
+	}
+	return u.Query().Get("h"), nil
+}
+
+func checkM3u8TsMD5(body []byte, md5Value string) (bool, error) {
+	h := md5.New()
+	_, err := io.WriteString(h, string(body))
+	if err != nil {
+		return false, err
+	}
+	tsMD5 := fmt.Sprintf("%x", h.Sum(nil))
+	if tsMD5 != md5Value {
+		return false, nil
+	}
+
+	return true, nil
+
 }

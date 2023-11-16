@@ -39,7 +39,9 @@ func (c LruCache[K, V]) Empty() {
 		c.Delete(key)
 	}
 }
-
+func (c LruCache[K, V]) Len() int {
+	return len(c.cache.Keys())
+}
 func NewLruCache[K comparable, V any](capacity int) v1.Cache[K, V] {
 	opts := genericsCache.AsLRU[K, V](lru.WithCapacity(capacity))
 	c := genericsCache.New[K, V](opts)
